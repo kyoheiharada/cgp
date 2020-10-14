@@ -1,11 +1,13 @@
+import sympy
 from sympy.parsing.sympy_parser import *
 from sympy import init_printing
+from sympy.printing import *
 import pygmo as pg
 import dcgpy
 from matplotlib import pyplot as plt
 import numpy as np
+import datetime
 import argparse
-import dataset_loader_2020 as dl
 import json
 import os
 import pickle
@@ -17,22 +19,25 @@ init_printing()
 
 
 def main():
+    sympy.init_printing()
     parser = argparse.ArgumentParser(description='CGP')
     parser.add_argument('--mode', '-m', default="main",
                         help='Main or Aux')
     parser.add_argument('--gen', '-g', type=int, default=10000,
                         help='generation')
-    parser.add_argument('--max-mut', type=int, default=10000,
+    parser.add_argument('--max-mut', type=int, default=4,
                         help='max mutation')
     parser.add_argument('--fold', type=int, default=0, metavar='S',
                         help='random seed (default: 1)')
     args = parser.parse_args()
 
     print("Mode: {}".format(args.mode))
+    date = datetime.datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
+    os.makedirs("result/" + date)
 
     with open("sensor_y{}.json".format(args.fold)) as f:
         sensors = json.load(f)
-    y_sensor = sensors["Y"][:1]
+    y_sensor = sensors["Y"][:2]
 
     train_x = np.load(
         "E:/fp16/MainData/main{0:010d}.npy".format(1)).transpose(0, 2, 1)[:30]
@@ -63,31 +68,55 @@ def main():
 
     uda = dcgpy.es4cgp(gen=args.gen, max_mut=args.max_mut)
     algo = pg.algorithm(uda)
-    algo.set_verbosity(500)
+    algo.set_verbosity(1)
 
     pop = pg.population(prob, 4)
     pop = algo.evolve(pop)
     print("Best model loss:", pop.champion_f[0])
 
     x = pop.champion_x
-    print(type(x))
-    a = parse_expr(udp.prettier(x))[0]
-    # with open("champ.txt", "w") as f:
-    #     pickle.dump(a, f)
-    a = a.subs({"c1": x[0]})
-    print(type(a))
-    print(a)
+
+    equ = []
+    for a in parse_expr(udp.prettier(x)):
+        a = a.subs({"c1": x[0]})
+        print(a)
+        equ.append(sympy.latex(a))
+
+    Y_pred = udp.predict(train_x, pop.champion_x)
+    for i in range(Y_pred.shape[-1]):
+        plt.plot(train_y[:, i], label="true")
+        plt.plot(Y_pred[:, i], label='predict')
+        plt.title('$f(x) = ' + equ[i] + '$')
+        plt.savefig("result/" + date +
+                    "/train_result_{}.png".format(sensors["Label"][i]))
+        plt.close()
+
+    Y_pred = udp.predict(test_x, pop.champion_x)
+    for i in range(Y_pred.shape[-1]):
+        plt.plot(test_y[:, i], label="true")
+        plt.plot(Y_pred[:, i], label='predict')
+        plt.title('$f(x) = ' + equ[i] + '$')
+        plt.savefig("result/" + date +
+                    "/test_result_{}.png".format(sensors["Label"][i]))
+        plt.close()
+
+    # save population
+    with open("result/" + date + "/pop", 'wb') as f:
+        pickle.dump(pop, f)
 
     log = algo.extract(dcgpy.es4cgp).get_log()
     gen = [it[0] for it in log]
     loss = [it[2] for it in log]
+    res = {}
+    res["loss"] = loss
+    res["latex"] = equ
+    json.dump(res, open("result/" + date + "/result.json", "w"))
 
     plt.semilogy(gen, loss)
     plt.title('last call to evolve')
     plt.xlabel('generation')
     plt.ylabel('loss')
-    plt.show()
-    plt.savefig("test.png")
+    plt.savefig("result/" + date + "/result.png")
     plt.close()
 
 
