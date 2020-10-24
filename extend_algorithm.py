@@ -16,6 +16,24 @@ init_printing()
 # Fundamental for plotting.
 
 
+def my_max(x):
+    return max(x)
+
+
+def my_max_print(x):
+    s = ','
+    return "max(" + s.join(x) + ")"
+
+
+def my_min(x):
+    return min(x)
+
+
+def my_min_print(x):
+    s = ','
+    return "min(" + s.join(x) + ")"
+
+
 # class MGG(pg.sga):
 class MGG:
     def __init__(self, gen, udp, nx, ny, rows, cols, kernels, cross_times=128,
