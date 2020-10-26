@@ -69,12 +69,15 @@ class MGG:
             if self.mr > random.random():
                 new_x = dcgpy.expression_double(
                     self.nx, self.ny, self.rows, self.cols, self.cols + 1,
-                    kernels=self.kernels, n_eph=1)
-                print(pop.get_x()[i])
-                new_x.set(list(map(lambda x: int(x), pop.get_x()[i][1:])))
-                new_x.mutate_active()
+                    kernels=self.kernels)
                 print(new_x.get())
-                pop.set_x(i, new_x.get().insert(0, pop.get_x()[i][0]))
+                print(len(new_x.get()))
+                print(pop.get_x()[i])
+                print(len(pop.get_x()[i]))
+                print(list(map(lambda x: int(x), pop.get_x()[i])))
+                new_x.set(list(map(lambda x: int(x), pop.get_x()[i])))
+                new_x.mutate_active()
+                pop.set_x(i, new_x.get())
 
         return pop
 
@@ -135,7 +138,7 @@ def main():
     parser = argparse.ArgumentParser(description='CGP by MGG')
     parser.add_argument('--mode', '-m', default="main",
                         help='Main or Aux')
-    parser.add_argument('--gen', '-g', type=int, default=10000,
+    parser.add_argument('--gen', '-g', type=int, default=1000,
                         help='generation')
     parser.add_argument('--pop', '-p', type=int, default=100,
                         help='population')
@@ -148,13 +151,10 @@ def main():
     args = parser.parse_args()
 
     X, Y = dcgpy.generate_chwirut2()
-    print(X.shape, Y.shape)
 
-    ss = dcgpy.kernel_set_double(
-        ["sum", "diff", "mul", "pdiv", "sin", "cos", "exp", "log", "gaussian"])
+    ss = dcgpy.kernel_set_double(["sum", "diff", "mul", "pdiv"])
     udp = dcgpy.symbolic_regression(
-        points=X, labels=Y, rows=args.rows, cols=args.cols, kernels=ss(),
-        levels_back=args.cols + 1, n_eph=1)
+        points=X, labels=Y, rows=1, cols=16, kernels=ss())
     print(udp)
 
     uda = MGG(gen=args.gen, udp=udp, nx=X.shape[-1],
@@ -162,7 +162,7 @@ def main():
     prob = pg.problem(udp)
     print(prob)
     algo = pg.algorithm(uda)
-    algo.set_verbosity(1000)
+    # algo.set_verbosity(1000)
 
     pop = pg.population(prob, args.pop)
     pop = algo.evolve(pop)

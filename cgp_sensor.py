@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import pickle
+from MGG.extend_algorithm import MGG
 import warnings
 warnings.filterwarnings("ignore")
 # Sympy is nice to have for basic symbolic manipulation.
@@ -27,6 +28,12 @@ def main():
                         help='generation')
     parser.add_argument('--max-mut', type=int, default=4,
                         help='max mutation')
+    parser.add_argument('--pop', '-p', type=int, default=100,
+                        help='population')
+    parser.add_argument('--rows', '-r', type=int, default=1,
+                        help='rows')
+    parser.add_argument('--cols', '-c', type=int, default=16,
+                        help='cols')
     parser.add_argument('--fold', type=int, default=0, metavar='S',
                         help='random seed (default: 1)')
     args = parser.parse_args()
@@ -56,21 +63,27 @@ def main():
     print(train_x.shape, train_y.shape)
     print(test_x.shape, test_y.shape)
 
-    ss = dcgpy.kernel_set_double(["sum", "mul", "sin", "cos", "gaussian"])
+    ss = dcgpy.kernel_set_double(
+        ["sum", "diff", "mul", "pdiv", "sin", "cos", "exp", "log", "gaussian"])
     udp = dcgpy.symbolic_regression(
         points=train_x, labels=train_y, kernels=ss(),
-        rows=1,
-        cols=100,
-        n_eph=1,
-        levels_back=80)
+        rows=args.rows,
+        cols=args.cols,
+        levels_back=args.cols + 1,
+        n_eph=1)
     prob = pg.problem(udp)
     print(udp)
+    print(prob)
 
-    uda = dcgpy.es4cgp(gen=args.gen, max_mut=args.max_mut)
+    # uda = dcgpy.es4cgp(gen=args.gen, max_mut=args.max_mut)
+    uda = MGG(gen=args.gen, udp=udp, nx=train_x.shape[-1],
+              ny=train_y.shape[-1], rows=args.rows, cols=args.cols,
+              kernels=ss())
+
     algo = pg.algorithm(uda)
     algo.set_verbosity(1)
 
-    pop = pg.population(prob, 4)
+    pop = pg.population(prob, args.pop)
     pop = algo.evolve(pop)
     print("Best model loss:", pop.champion_f[0])
 
