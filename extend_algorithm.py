@@ -37,7 +37,7 @@ def my_min_print(x):
 # class MGG(pg.sga):
 class MGG:
     def __init__(self, gen, udp, nx, ny, rows, cols,
-                 kernels, cross_times=32,
+                 kernels, n_eph=1, cross_times=32,
                  mut_ratio=.01, max_eval=None):
         # super(MGG, self).__init__(gen=gen, m=mut_ratio)
         self.__gen = gen
@@ -47,6 +47,7 @@ class MGG:
         self.rows = rows
         self.cols = cols
         self.kernels = kernels
+        self.n_eph = n_eph
         self.__cross_times = cross_times
         self.mr = mut_ratio
         # self.selection = pg.algorithm._sga_selection_type.ROULETTE
@@ -70,11 +71,11 @@ class MGG:
                 new_x = dcgpy.expression_double(
                     self.nx, self.ny, self.rows, self.cols, self.cols + 1,
                     kernels=self.kernels, n_eph=1)
-                print(pop.get_x()[i])
                 new_x.set(list(map(lambda x: int(x), pop.get_x()[i][1:])))
                 new_x.mutate_active()
-                print(new_x.get())
-                pop.set_x(i, new_x.get().insert(0, pop.get_x()[i][0]))
+                new_arr = new_x.get()
+                new_arr.insert(0, pop.get_x()[i][:self.n_eph])
+                pop.set_x(i, new_arr)
 
         return pop
 
@@ -158,7 +159,7 @@ def main():
     print(udp)
 
     uda = MGG(gen=args.gen, udp=udp, nx=X.shape[-1],
-              ny=Y.shape[-1], rows=args.rows, cols=args.cols, kernels=ss())
+              ny=Y.shape[-1], rows=args.rows, cols=args.cols, kernels=ss(), n_eph=1)
     prob = pg.problem(udp)
     print(prob)
     algo = pg.algorithm(uda)
