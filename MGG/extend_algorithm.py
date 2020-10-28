@@ -36,7 +36,7 @@ def my_min_print(x):
 
 class MGG:
     def __init__(self, gen, udp, nx, ny, rows, cols,
-                 kernels, n_eph=1, cross_times=32,
+                 levels_back, kernels, n_eph=1, cross_times=32,
                  mut_ratio=.01, max_eval=None):
         # super(MGG, self).__init__(gen=gen, m=mut_ratio)
         self.__gen = gen
@@ -45,6 +45,7 @@ class MGG:
         self.ny = ny
         self.rows = rows
         self.cols = cols
+        self.levels_back = levels_back
         self.kernels = kernels
         self.n_eph = n_eph
         self.__cross_times = cross_times
@@ -70,7 +71,7 @@ class MGG:
         for i in range(len(pop)):
             if self.mr > random.random():
                 new_x = dcgpy.expression_double(
-                    self.nx, self.ny, self.rows, self.cols, self.cols + 1,
+                    self.nx, self.ny, self.rows, self.cols, self.levels_back,
                     kernels=self.kernels, n_eph=1)
                 new_x.set(list(map(lambda x: int(x), pop.get_x()[i][1:])))
                 new_x.mutate_active()
