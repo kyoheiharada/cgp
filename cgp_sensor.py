@@ -28,14 +28,16 @@ def main():
                         help='generation')
     parser.add_argument('--mutation', type=float, default=.05,
                         help='mutation ratio')
-    parser.add_argument('--pop', '-p', type=int, default=100,
+    parser.add_argument('--pop', '-p', type=int, default=500,
                         help='population')
     parser.add_argument('--rows', '-r', type=int, default=1,
                         help='rows')
-    parser.add_argument('--cols', '-c', type=int, default=10,
+    parser.add_argument('--cols', '-c', type=int, default=15,
                         help='cols')
     parser.add_argument('--levels-back', '-l', type=int, default=10,
                         help='levels-back')
+    parser.add_argument('--cross-times', '-t', type=int, default=50,
+                        help='cross times')
     parser.add_argument('--fold', type=int, default=0, metavar='S',
                         help='random seed (default: 1)')
     args = parser.parse_args()
@@ -43,6 +45,8 @@ def main():
     print("Mode: {}".format(args.mode))
     date = datetime.datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
     os.makedirs("result/" + date)
+    with open("result/" + date + "/args.json", "w") as f:
+        json.dump(args.__dict__, f, indent=4)
 
     with open("sensor_y{}.json".format(args.fold)) as f:
         sensors = json.load(f)
@@ -78,10 +82,10 @@ def main():
     uda = MGG(gen=args.gen, udp=udp, nx=train_x.shape[-1],
               ny=train_y.shape[-1], rows=args.rows, cols=args.cols,
               levels_back=args.levels_back, kernels=ss(), n_eph=1,
-              cross_times=256, mut_ratio=args.mutation)
+              cross_times=args.cross_times, mut_ratio=args.mutation)
 
     algo = pg.algorithm(uda)
-    algo.set_verbosity(1)
+    algo.set_verbosity(10)
 
     pop = pg.population(prob, args.pop)
     pop = algo.evolve(pop)
