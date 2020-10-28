@@ -2,6 +2,7 @@
 import argparse
 import numpy as np
 import warnings
+import copy
 import dcgpy
 import pygmo as pg
 # Sympy is nice to have for basic symbolic manipulation.
@@ -58,12 +59,19 @@ class MGG:
 
     def cross(self, ind1, ind2):
         import random
-        p = random.randint(1, len(ind1) - 1)
+        if random.random() < 0.5:
+            p = random.randint(1, len(ind1) - 1)
 
-        indA = np.concatenate([ind1[:p], ind2[p:]])
-        indB = np.concatenate([ind2[:p], ind1[p:]])
+            indA = np.concatenate([ind1[:p], ind2[p:]])
+            indB = np.concatenate([ind2[:p], ind1[p:]])
 
-        # ind1[:p], ind2[p:] = ind2[:p], ind1[p:]
+        else:
+            indA = copy.deepcopy(ind1)
+            indB = copy.deepcopy(ind2)
+            for i in range(len(indA)):
+                if random.random() < 0.5:
+                    indA[i], indB[i] = indB[i], indA[i]
+
         return tuple((indA, indB, ))
 
     def mutate(self, pop):
@@ -170,7 +178,7 @@ def main():
     print(udp)
 
     uda = MGG(gen=args.gen, udp=udp, nx=X.shape[-1],
-              ny=Y.shape[-1], rows=args.rows, cols=args.cols, kernels=ss())
+              ny=Y.shape[-1], rows=args.rows, cols=args.cols, levels_back=10, kernels=ss())
     prob = pg.problem(udp)
     print(prob)
     algo = pg.algorithm(uda)
