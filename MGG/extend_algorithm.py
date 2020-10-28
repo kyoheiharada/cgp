@@ -34,10 +34,9 @@ def my_min_print(x):
     return "min(" + s.join(x) + ")"
 
 
-# class MGG(pg.sga):
 class MGG:
     def __init__(self, gen, udp, nx, ny, rows, cols,
-                 kernels, cross_times=32,
+                 kernels, n_eph=1, cross_times=32,
                  mut_ratio=.01, max_eval=None):
         # super(MGG, self).__init__(gen=gen, m=mut_ratio)
         self.__gen = gen
@@ -47,11 +46,14 @@ class MGG:
         self.rows = rows
         self.cols = cols
         self.kernels = kernels
+        self.n_eph = n_eph
         self.__cross_times = cross_times
         self.mr = mut_ratio
         # self.selection = pg.algorithm._sga_selection_type.ROULETTE
         self.max_eval = max_eval
         self.verb = 1
+        self.log = []
+        self.feval = 0
 
     def cross(self, ind1, ind2):
         import random
@@ -69,15 +71,12 @@ class MGG:
             if self.mr > random.random():
                 new_x = dcgpy.expression_double(
                     self.nx, self.ny, self.rows, self.cols, self.cols + 1,
-                    kernels=self.kernels)
-                print(new_x.get())
-                print(len(new_x.get()))
-                print(pop.get_x()[i])
-                print(len(pop.get_x()[i]))
-                print(list(map(lambda x: int(x), pop.get_x()[i])))
-                new_x.set(list(map(lambda x: int(x), pop.get_x()[i])))
+                    kernels=self.kernels, n_eph=1)
+                new_x.set(list(map(lambda x: int(x), pop.get_x()[i][1:])))
                 new_x.mutate_active()
-                pop.set_x(i, new_x.get())
+                new_arr = new_x.get()
+                new_arr.insert(0, pop.get_x()[i][:self.n_eph])
+                pop.set_x(i, new_arr)
 
         return pop
 
@@ -86,11 +85,11 @@ class MGG:
         import random
         fits = pop.get_f()
         xs = pop.get_x()
-        sum_f = sum(list([1./i for i in fits]))
+        sum_f = sum(list([1. / i for i in fits]))
         p = random.uniform(0, sum_f)
         now = 0
         for i in range(len(fits)):
-            now += 1./fits[i]
+            now += 1. / fits[i]
             if now >= p:
                 break
 
@@ -99,6 +98,7 @@ class MGG:
     def evolve(self, pop):
         print("Gen:\tBest:\tModel:")
         prob = pop.problem
+        self.feval += len(pop.get_x())
         import random
         for g in range(1, self.__gen + 1):
             pop_cand = pg.population(prob)
@@ -114,6 +114,10 @@ class MGG:
                 pop_cand.push_back(new_xs[1])
 
             pop_cand = self.mutate(pop_cand)
+            new_xs = pop_cand.get_x()
+            for i, new_x in enumerate(new_xs):
+                new_f = prob.fitness(new_x)
+                pop_cand.set_xf(i, new_x, new_f)
 
             # Create Next-Gen Population
             # 1st: Elite
@@ -125,10 +129,17 @@ class MGG:
             if g % self.verb == 0:
                 print("{}\t{}\t{}".format(
                     g, pop.champion_f, self.udp.prettier(pop.champion_x)))
+            self.feval += len(pop.get_x())
+            self.log.append((g, self.feval, float(pop.champion_f), pop.get_x()[
+                            :self.n_eph], self.udp.prettier(pop.champion_x)))
+
         return pop
 
     def set_verbosity(self, l):
         self.verb = l
+
+    def get_log(self):
+        return self.log
 
     def __get_name(self):
         return "Minimal Generation Gap"

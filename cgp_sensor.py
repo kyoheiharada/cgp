@@ -24,7 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description='CGP')
     parser.add_argument('--mode', '-m', default="main",
                         help='Main or Aux')
-    parser.add_argument('--gen', '-g', type=int, default=10000,
+    parser.add_argument('--gen', '-g', type=int, default=3000,
                         help='generation')
     parser.add_argument('--max-mut', type=int, default=4,
                         help='max mutation')
@@ -32,7 +32,7 @@ def main():
                         help='population')
     parser.add_argument('--rows', '-r', type=int, default=1,
                         help='rows')
-    parser.add_argument('--cols', '-c', type=int, default=16,
+    parser.add_argument('--cols', '-c', type=int, default=50,
                         help='cols')
     parser.add_argument('--fold', type=int, default=0, metavar='S',
                         help='random seed (default: 1)')
@@ -66,19 +66,16 @@ def main():
     ss = dcgpy.kernel_set_double(
         ["sum", "diff", "mul", "pdiv", "sin", "cos", "exp", "log", "gaussian"])
     udp = dcgpy.symbolic_regression(
-        points=train_x, labels=train_y, kernels=ss(),
-        rows=args.rows,
-        cols=args.cols,
-        levels_back=args.cols + 1,
-        n_eph=1)
+        points=train_x, labels=train_y, rows=args.rows, cols=args.cols, kernels=ss(),
+        levels_back=args.cols + 1, n_eph=1)
     prob = pg.problem(udp)
     print(udp)
     print(prob)
 
     # uda = dcgpy.es4cgp(gen=args.gen, max_mut=args.max_mut)
     uda = MGG(gen=args.gen, udp=udp, nx=train_x.shape[-1],
-              ny=train_y.shape[-1], rows=args.rows, cols=args.cols,
-              kernels=ss())
+              ny=train_y.shape[-1], rows=args.rows, cols=args.cols, kernels=ss(), n_eph=1,
+              cross_times=256)
 
     algo = pg.algorithm(uda)
     algo.set_verbosity(1)
@@ -117,7 +114,7 @@ def main():
     with open("result/" + date + "/pop", 'wb') as f:
         pickle.dump(pop, f)
 
-    log = algo.extract(dcgpy.es4cgp).get_log()
+    log = algo.extract(MGG).get_log()
     gen = [it[0] for it in log]
     loss = [it[2] for it in log]
     res = {}
